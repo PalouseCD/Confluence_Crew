@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+data/
+outputs/
+shiny/CCApp/data/
+shiny/CCApp/rsconnect/
+shiny/CCApp/WWW/
+CCApp.Rproj
+RMD/outputs/
