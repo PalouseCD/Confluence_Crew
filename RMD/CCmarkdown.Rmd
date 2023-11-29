@@ -1,0 +1,401 @@
+---
+#this is probably the key to getting shiny to output the right markown
+#the 'sta' and 'dt_ccdata' params should fill with whatever your inputs are in shiny
+#the param format here is copied from https://resources.symbolix.com.au/2020/10/28/downloadable-reports-shiny/
+params:
+  sta: NULL
+  dt_ccdata: NULL
+    
+### Make sure to change the name in output_file to desired report name ###
+#knit: (function(inputFile, encoding) {
+  #rmarkdown::render(inputFile, encoding = encoding, output_dir = "R:/_04_Project_Data/R/Confluence_Crew/RMD" , output_file = paste("SFPR12.50_Report-", Sys.Date(), ".docx", sep=''))}) #Output name must be manually changed
+  
+output: html_document
+
+
+---
+```{r data_setup, message=FALSE, warning=FALSE, include=FALSE}
+library(flextable)
+library(reactable)
+library(pander)
+library(knitr)
+library(forcats)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(tools)
+library(readr)
+library(anytime)
+library(data.table)
+library(here)
+library(tinytex)
+library(gt)
+library(kableExtra)
+library(scales)
+library(pander)
+library(ggthemes)
+library(pals)
+library(plotly)
+here()
+
+#set up color palette for graphs
+colors <- unname(glasbey())
+
+### CREATING DATAFRAME ###
+#when running in RStudio use:
+ccdata <- read.csv(here("data", "Confluence_Crew_Clean_Data.csv"))
+
+#dates are changed to mdy_hms
+ccdata$Datetime <- mdy_hms(ccdata$Datetime)
+
+#changing station names to make them more descriptive
+ccdata <- mutate(ccdata, Station=recode(Station,
+                                      "PC04.38" = "Paradise Creek (PC04.38)",
+                                       "ROSC00.80" = "Rose Creek (ROSC00.80)",
+                                       "SFPR12.50" ="South Fork Palouse River (SFPR12.50)",
+                                       "SFPR22.37" = "South Fork Palouse River (SFPR22.37)",
+                                       "SFPR23.38" = "South Fork Palouse River (SFPR23.38)",
+                                       "SFPR23.89" = "South Fork Palouse River (SFPR23.89)",
+                                       "SFPR24.27" = "South Fork Palouse River (SFPR24.27)",
+                                       "UFC40.72" = "Union Flat Creek (UFC40.72)",
+                                       "UFC42.03" = "Union Flat Creek (UFC42.03)",
+                                       "UNTRIB-FMC03.33" = "Unnamed Tributary Four Mile Creek (UNTRIB-FMC03.33)",
+                                       "UNTRIB-UFC0.12" = "Unnamed Tributary Union Flat Creek (UNTRIB-UFC0.12)"))
+
+#this chunk filters data to a single site that the user selects
+#this functions correctly when manually entering in site IDs in the YAML header,
+#but not when trying to pass them from shiny inputs
+#Maybe it's not referring to the YAML parameters correctly?
+SITE_ID = params
+
+if(SITE_ID == "PC04.38"){
+  Station = ccdata[ccdata$Station == "Paradise Creek (PC04.38)", ]
+}
+
+if(SITE_ID == "ROSC00.80"){
+  Station = ccdata[ccdata$Station == "South Fork Palouse River (SFPR12.50)", ]
+}
+
+if(SITE_ID == "SFPR12.50"){
+  Station = ccdata[ccdata$Station == "South Fork Palouse River (SFPR12.50)", ]
+}
+
+if(SITE_ID == "SFPR22.37"){
+  Station = ccdata[ccdata$Station == "South Fork Palouse River (SFPR22.37)", ]
+}
+
+if(SITE_ID == "SFPR23.38"){
+  Station = ccdata[ccdata$Station == "South Fork Palouse River (SFPR23.38)", ]
+}
+
+if(SITE_ID == "SFPR23.89"){
+  Station = ccdata[ccdata$Station == "South Fork Palouse River (SFPR23.89)", ]
+}
+
+if(SITE_ID == "SFPR24.27"){
+  Station = ccdata[ccdata$Station == "South Fork Palouse River (SFPR24.27)", ]
+}
+
+if(SITE_ID == "UFC40.72"){
+  Station = ccdata[ccdata$Station == "Union Flat Creek (UFC40.72)", ]
+}
+if(SITE_ID == "UFC42.03"){
+  Station = ccdata[ccdata$Station == "Union Flat Creek (UFC42.03)", ]
+}
+
+if(SITE_ID == "UNTRIB-FMC03.33"){
+  Station = ccdata[ccdata$Station == "Unnamed Tributary Four Mile Creek (UNTRIB-FMC03.33)", ]
+}
+
+if(SITE_ID == "UNTRIB-UFC0.12"){
+  Station = ccdata[ccdata$Station == "Unnamed Tributary Union Flat Creek (UNTRIB-UFC0.12)", ]
+}
+
+```
+
+# `r SITE_ID` Report
+
+This is a summary of Confluence Crew site data containing data from water quality samples collected monthly at `r SITE_ID`. Several figures have been generated below to show the trends in water quality parameters throughout the sampling period. For more information, please contact Tal Atkins at americorps4@palousecd.org. 
+
+### **Air Temperature** 
+
+The figure below displays air temperature ($^\circ$C), measured monthly in the field using a thermometer.
+
+```{r airtemperature_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Air Temperature Average (C)")
+
+#controls graph appearance
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Air Temperature (C)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+
+
+```
+
+\newpage
+
+### **Dissolved Oxygen** 
+
+The figures below display dissolved oxygen (DO), in milligrams per liter (mg/L) or parts per million (ppm), which can vary depending on which scale the Confluence Crew member has chosen. The red dotted line represents the lower threshold for DO (9.5 mg/L) set by the State of Washington ([**WAC 173-201A-200**](https://apps.leg.wa.gov/wac/default.aspx?cite=173-201a-200)). DO is the amount of gaseous oxygen dissolved in the water, which benefits aquatic life. DO levels can change seasonally and even throughout the day.
+
+```{r DO_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Dissolved Oxygen (ppm or mg/L)")
+
+#controls graph appearance
+#note more code that adds in water quality max and min lines
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  geom_hline(aes(yintercept = 9.5, linetype ="Dissolved Oxygen Min."), color = "red", size = 2)+
+  scale_linetype_manual(name = "Water Quality Criteria", values = 2, 
+                      guide = guide_legend(override.aes = list(color = "red")))+
+  ylab("Dissolved Oxygen (ppm or mg/L)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+
+```
+
+\newpage
+
+### **Nitrate Final Value (ppm or mg/L)**
+This graph displays nitrate scale values, measured in milligrams per liter (mg/L) or parts per million (ppm). Nitrate is a common form of nitrogen found in streams. Nitrogen is found naturally in the environment and is fairly abundant. However, excess nitrogen from sewage systems and fertilizer applications can overstimulate the growth of aquatic plants and algae, throwing aquatic ecosystems out of equilibrium.
+
+```{r Nfinal_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Nitrate Final Value (ppm or mg/L)")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Nitrate Final Value (ppm or mg/L)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **Nitrate Scale Value**
+This graph displays nitrate scale values. Nitrate is a common form of nitrogen found in streams. Nitrogen is found naturally in the environment and is fairly abundant. However, excess nitrogen from sewage systems and fertilizer applications can overstimulate the growth of aquatic plants and algae, throwing aquatic ecosystems out of equilibrium.
+
+```{r Nscale_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Nitrate Scale Value")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Nitrate Scale Value")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **pH** 
+The figure below displays pH levels, which indicate levels of acidity or alkalinity. The pH scale ranges from 0 to 14 and is an important indicator of health in aquatic ecosystems. Variations in pH levels allow for pollutants, such as heavy metals and nutrients, to be more easily dissolved in water. pH is measured monthly using a handheld YSI ProDSS. The red dotted lines on the graph indicate the minimum and maximum thresholds, 6.5 and 8.5 pH units, for pH according to the Water Quality Standards for Surface Waters of the State of Washington ([**WAC 173-201A-200**](https://apps.leg.wa.gov/wac/default.aspx?cite=173-201a-200)).
+
+```{r ph_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "pH")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+    geom_hline(aes(yintercept = 8.5, linetype ="pH Limits"), color = "red", size = 2)+
+  geom_hline(aes(yintercept = 6.5, linetype ="pH Limits"), color = "red", size = 2)+
+  scale_linetype_manual(name = "Water Quality Criteria", values = 2, 
+                      guide = guide_legend(override.aes = list(color = "red")))+
+  ylab("pH")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **Streamflow (ft^3/sec)** 
+The figure below shows streamflow, measured in cubic feet per second (CFS). Stream discharge is calculated by measuring velocity across the cross-sectional area of a stream channel. Streamflow is measured seasonally and is an option tier of Confluence Crew monitoring, so if no data displays in the graph, the Confluence Crew monitor of this site has chosen not to perform streamflow measurements. 
+
+```{r streamflow_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Streamflow (ft^3/sec)")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Streamflow (ft^3/sec)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **Total Organisms Found** 
+The figure below shows the total number of aquatic macroinvertebrates found during Tier III monitoring. Aquatic macroinvertebrate counts are performed seasonally and is an optional tier of Confluence Crew monitoring, so if no data displays in the graph, the Confluence Crew monitor of this site has chosen not to perform macroinvertebrate surveys. 
+
+```{r macro_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Total Organisms Found")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Total Organisms Found")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+
+```
+
+\newpage
+
+### **Total Taxa (Species) Found** 
+The figure below shows the total taxa of aquatic macroinvertebrates found during Tier III monitoring. Aquatic macroinvertebrate counts are performed seasonally and is an optional tier of Confluence Crew monitoring, so if no data displays in the graph, the Confluence Crew monitor of this site has chosen not to perform macroinvertebrate surveys. 
+
+```{r taxa_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Total Taxa (Species) Found")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Total Taxa (Species) Found")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **Transparency (NTUs)** 
+This graph displays a measure of water clarity, measured in nephelometric turbidity units (NTU). Turbidity is measured by determining how much light can pass through the water. Water clarity directly affects ecological productivity and habitat quality in aquatic environments. Excessive turbidity can be caused by physical disruption of the stream channel or through sediment inputs as a result of runoff and upland erosion.
+
+```{r transparency_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Transparency (NTUs)")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Transparency (NTUs)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **Water Quality** 
+The figure below shows the overall measurement of water quality. These measurements are performed yearly and are an optional aspect of Confluence Crew monitoring, so if no data displays in the graph, the Confluence Crew monitor of this site has chosen not to perform water quality measurement. 
+
+```{r wq_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Transparency (NTUs)")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) + 
+  ylab("Transparency (NTUs)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
+\newpage
+
+### **Water Temperature Average (C)** 
+The figure below displays the water temperature (C), measured with a thermometer during each monthly site visit. The red dotted line represents the State of Washington's threshold for water temperature (17.5$^\circ$C)([**WAC 173-201A-200**](https://apps.leg.wa.gov/wac/default.aspx?cite=173-201a-200)). 
+
+```{r watertemp_graph, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+#set up temporary file
+TEMP = subset(Station, Parameter == "Water Temperature Average (C)")
+
+TEMP_PLOT = ggplot() + geom_line(aes(y = Value, x = Datetime), data = TEMP) +
+  geom_hline(aes(yintercept = 17.5, linetype ="WA Water Temperature Threshold"), color = "red", size = 2)+
+  scale_linetype_manual(name = "Water Quality Criteria", values = 2, 
+                      guide = guide_legend(override.aes = list(color = "red")))+
+  ylab("Water Temperature Average (C)")+
+  xlab("")+
+  theme_solarized_2(light = TRUE, base_size = 20)+
+  theme(legend.position = "right", panel.grid.minor.x = element_blank())+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=2))+
+  scale_color_manual(values = colors)+
+  #scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y")+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+TEMP_PLOT
+```
+
